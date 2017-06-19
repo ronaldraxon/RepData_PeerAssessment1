@@ -65,7 +65,7 @@ stepsData <- cData %>%
 
 ```
 
-```{r, fig.align='center',echo=FALSE}
+```{r, fig.align='center'}
 hist(stepsData$sum_steps_per_day,
      breaks = 20,
      include.lowest = TRUE,
@@ -78,7 +78,7 @@ hist(stepsData$sum_steps_per_day,
 The last plot suggest a high frequency of steps between 1000 and 15000 grouping 
 them by day. Let's see a decription of the data:
 
-```{r showtable, results='asis',echo=FALSE}
+```{r showtable, results='asis'}
 kable(stepsData,caption= "Data Report")
 avrgStepsPerDay <- format(mean(stepsData$sum_steps_per_day),digits = 2)
 avrgOfMeanStepsPerDay <- round(mean(stepsData$avg_steps_per_day),digits = 2)
@@ -108,9 +108,10 @@ plot(dailyActivityPattern,type="l",
      ylab= "Average of steps",
      col= "orange",
      main="Average steps per interval")
+
 ```
 
-```{r , echo=FALSE}
+```{r}
 maxim <- filter(dailyActivityPattern, 
                 avg_steps==max(dailyActivityPattern$avg_steps))
 ```
@@ -167,8 +168,9 @@ stepsDataNotNA <- filledSteps %>%
                               med_steps = median(steps))
 ```
 
+Now we plot the histograms:
 
-```{r,fig.align='center', echo=FALSE}
+```{r,fig.align='center'}
 par(mfrow=c(1,2))
 hist(stepsData$sum_steps_per_day,
      breaks = 20,
@@ -213,11 +215,9 @@ weekdaysfilledStepsPerInterval <- weekdaysfilledSteps %>%
                                   summarise(avg_steps = mean(steps))
 
 ```
+And now, we plot the panel:
 
-```{r,fig.align='center' ,echo=FALSE}
-#par(mfrow=c(2,1))
-#plot(weekdaySteps,type="l")
-#plot(weekendSteps,type="l")
+```{r,fig.align='center'}
 xyplot(avg_steps~interval|day_type,
        data = weekdaysfilledStepsPerInterval,
        type='l',layout=c(1,2),
