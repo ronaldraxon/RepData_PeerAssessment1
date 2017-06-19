@@ -1,25 +1,233 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "ronaldraxon@gmail.com"
 output: 
   html_document:
-    keep_md: true
+  keep_md: true
 ---
 
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(xtable)
+library(knitr)
+library(lattice)
+```  
+  
 ## Loading and preprocessing the data
+  
+###Unzip and reading .csv file
 
+As part of the loading process, the data file is extracted from "activity.zip" 
+which is in the repository. 
+You can download the data set [here.][1] 
+
+```{r}
+unzipedFile <- unzip(zipfile='activity.zip',files=c('activity.csv'))
+activityData <- read.csv(unzipedFile)
+```
+
+###Overview of the data 
+
+In order to recognize the features (fields). Here is a list with the first 6 
+observations
+
+```{r}
+head(activityData)
+```
+
+
+
+###Preprocessing the data
+
+Using the [dplyr][2] library and its function "filter", a subset named cData 
+will be created ignoring the missing values. 
+
+```{r}
+cData <- filter(activityData, steps != 'NA')
+head(cData)
+```
 
 
 ## What is mean total number of steps taken per day?
 
+A table with the variables **ssum_steps**, **avg_steps** and **med_steps** 
+containing the number, mean, and the median of steps taken per day respectively 
+is created as follows:
 
+```{r}
+stepsData <- cData %>% 
+             group_by(date) %>%
+             summarise(sum_steps_per_day = sum(steps), 
+                       avg_steps_per_day = mean(steps), 
+                       med_steps = median(steps))
+
+```
+
+```{r, fig.align='center',echo=FALSE}
+hist(stepsData$sum_steps_per_day,
+     breaks = 20,
+     include.lowest = TRUE,
+     xlab= "Number of steps",
+     ylab= "Frequency",
+     col= "orange",
+     main="Histogram of steps per day")
+```
+
+The last plot suggest a high frequency of steps between 1000 and 15000 grouping 
+them by day. Let's see a decription of the data:
+
+```{r showtable, results='asis',echo=FALSE}
+kable(stepsData,caption= "Data Report")
+avrgStepsPerDay <- format(mean(stepsData$sum_steps_per_day),digits = 2)
+avrgOfMeanStepsPerDay <- round(mean(stepsData$avg_steps_per_day),digits = 2)
+```
+
+By grouping the observations by date, the average of steps per day is 
+**`r avrgStepsPerDay`** and the mean of the avarage of steps per day is
+**`r avrgOfMeanStepsPerDay`**.
 
 ## What is the average daily activity pattern?
 
+The **dailyActivityPatterndata** is created by grouping the data by **interval**
+and getting the average of steps for those intervals.
 
+```{r}
+dailyActivityPattern <- cData %>% 
+                        group_by(interval) %>%
+                        summarise(avg_steps = mean(steps))
+```
+
+Here is a time series plot of the 5-minute interval (x-axis) and the average 
+number of steps taken, averaged across all days (y-axis).
+
+```{r, fig.align='center'}
+plot(dailyActivityPattern,type="l",
+     xlab= "Interval",
+     ylab= "Average of steps",
+     col= "orange",
+     main="Average steps per interval")
+```
+
+```{r , echo=FALSE}
+maxim <- filter(dailyActivityPattern, 
+                avg_steps==max(dailyActivityPattern$avg_steps))
+```
+
+The interval **`r maxim$interval`** contains the highest number with an average of
+**`r round(maxim$avg_steps,digits=2)`** steps.
 
 ## Imputing missing values
 
+It is important to know some charasterists for the entire data set.
+A **Summary** is extracted as follows:
 
+```{r}
+res <- summary(activityData)
+```
+
+```{r, echo=FALSE}
+res
+numberOfNA <- as.integer(substr(res[7,1],
+                         regexpr(':', res[7,1])+1,
+                         nchar(res[7,1])))
+percentageOfNA <- round(numberOfNA/as.integer(dim(activityData)[1]),
+                        digits=2)
+```
+
+This summary reveals that there are  `r numberOfNA` observations with missing 
+values (about `r percentageOfNA`% of the entire data set). The the procedure to
+fill those missing values is as follows:
+
+```{r}
+filledSteps <- activityData
+for(i in 1:nrow(filledSteps)){
+  if(is.na(filledSteps[i,"steps"])){
+    value <- filter(dailyActivityPattern,interval==filledSteps[i,"interval"])
+    filledSteps[i,"steps"] <- value$avg_steps
+  }
+}
+```
+A copy of **activityData** is set into the **filledSteps** variable, then 
+**dailyActivityPattern** subset is used to set the the mean for any 5-minute 
+interval with missing values. Now let's see a couple observations to check the
+result
+
+```{r ,echo=FALSE}
+head(filledSteps)
+```
+
+In the same way as the first point, let's create another table without NA's
+```{r}
+stepsDataNotNA <- filledSteps %>% 
+                    group_by(date) %>%
+                    summarise(sum_steps_per_day = sum(steps), 
+                              avg_steps_per_day = mean(steps), 
+                              med_steps = median(steps))
+```
+
+
+```{r,fig.align='center', echo=FALSE}
+par(mfrow=c(1,2))
+hist(stepsData$sum_steps_per_day,
+     breaks = 20,
+     include.lowest = TRUE,
+     xlab= "Number of steps",
+     ylab= "Frequency",
+     col= "orange",
+     main="Steps per day ignoring NA's")
+hist(stepsDataNotNA$sum_steps_per_day,
+     breaks=20,
+     include.lowest = TRUE,
+     xlab= "Number of steps",
+     ylab= "Frequency",
+     col= "orange",
+     main="Steps per day filling NA's")
+avrgStepsNotNA <- format(mean(stepsDataNotNA$sum_steps_per_day),digits = 2)
+avrgOfMeanStepsNotNA <- round(mean(stepsDataNotNA$avg_steps_per_day),digits = 2)
+```
+
+Apparently, there is not a big difference between ingnoring NA's and filling them.
+But it is probably because the process to fix the observations.By grouping 
+the observations by date, the average of steps per day is 
+**`r avrgStepsNotNA`** and the mean of the avarage of steps per day is
+**`r avrgOfMeanStepsNotNA`**. These are the same quantities as the first excercise.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+In order to find differences the weekdaysfilledStepsPerInterval dataset for 
+intervals during weekday and weekends is prepared.Using **weekdays()** function, 
+the name of the day is obtained, given the respective date.
+
+```{r}
+weekdaysfilledSteps <- filledSteps
+weekdays <- c('lunes', 'martes', 'miércoles', 'jueves', 'viernes')
+weekdaysfilledSteps$day_type <- factor(
+                            weekdays(as.Date(filledSteps$date)) %in% weekdays,
+                            levels = c('FALSE','TRUE'), 
+                            labels=c('Weekend','Weekday')
+                            )
+weekdaysfilledStepsPerInterval <- weekdaysfilledSteps %>% 
+                                  group_by(interval,day_type) %>%
+                                  summarise(avg_steps = mean(steps))
+
+```
+
+```{r,fig.align='center' ,echo=FALSE}
+#par(mfrow=c(2,1))
+#plot(weekdaySteps,type="l")
+#plot(weekendSteps,type="l")
+xyplot(avg_steps~interval|day_type,
+       data = weekdaysfilledStepsPerInterval,
+       type='l',layout=c(1,2),
+       xlab='Interval',ylab='Number of Steps')
+
+```
+
+This last plot shows differences in activity patterns between weekdays and 
+weekends, revealing more steps during weekends than weekdays. It would suggest 
+a couple hypothesis such as sedentarism in labor days compared to non labor days.
+
+[1]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip
+[2]: https://cran.r-project.org/web/packages/dplyr/index.html
